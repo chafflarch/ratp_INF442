@@ -1,2 +1,6 @@
 numpy==1.26.4
 requests
+pandas
+json
+datetime
+pytz
