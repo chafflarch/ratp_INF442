@@ -27,10 +27,10 @@ from datetime import datetime, timedelta
 api_token = '2Btko3bnqjqsyYIE6g8rJX7YwxjJ8pua'
 api_url = 'https://prim.iledefrance-mobilites.fr/marketplace/stop-monitoring?MonitoringRef=STIF%3AStopPoint%3AQ%3A473931%3A'
 paris_timezone = pytz.timezone('Europe/Paris')
-paris_time = datetime.now(paris_timezone)
-request_time = paris_time.strftime('%Y-%m-%dT%H:%M:%S')
-head = {'apiKey' : api_token , 'Date': request_time}
 
+
+
+# DOESN'T WORK WELL YET
 
 def real_arrival_times(delta_t):  # delta_t : temps en seconde pendant lequel on regarde tous les horaires d'arrivée exacts ; 
 
@@ -42,7 +42,8 @@ def real_arrival_times(delta_t):  # delta_t : temps en seconde pendant lequel on
     t =0
     while(t<= delta_t):
         
-        
+        request_time = datetime.now(paris_timezone).strftime('%Y-%m-%dT%H:%M:%S')
+        head = {'apiKey' : api_token , 'Date': request_time}
         response = requests.get(api_url, headers=head)
         data = json.loads(response.content)
 
@@ -65,21 +66,21 @@ def real_arrival_times(delta_t):  # delta_t : temps en seconde pendant lequel on
         #check for the 'forcasted_arrival_time30M' of those that aren't yet defined
         # Iterate over DataFrame rows where 'forcasted_arrival_time30M' is None
         # It is supposed to work (maybe a mistake in the then-now... )
-        now = paris_time
+        now = datetime.now(paris_timezone)
         for index, row in df[df['forcasted_arrival_time30M'].isnull()].iterrows():
             row_VJN = row[0]
             expected_arrival_time = [visit["MonitoredVehicleJourney"]["MonitoredCall"]["ExpectedArrivalTime"] 
                                      for visit in data["Siri"]["ServiceDelivery"]["StopMonitoringDelivery"][0]["MonitoredStopVisit"] 
                                      if (visit["MonitoredVehicleJourney"]["VehicleJourneyName"][0]["value"]==row_VJN)]
-            print(expected_arrival_time)
+            
             # check of expected arrival_time isn't empty : 
             # sometimes it is apparently, at the moment the first VJN value disappears i.e. when a train arrives and if it has no forcasted_arrival_time30M
             if(expected_arrival_time!=[]):
                 then = datetime.fromisoformat(expected_arrival_time[0]).astimezone(paris_timezone)
                 time_difference = then - now
                 #we check 30 minutes before expected_arrival
-                # and we want to be sure the prediction is really about 30min before and not less
-                if ((time_difference.total_seconds() < 30 * 60) & (time_difference.total_seconds() > 29 * 60) ): # DEBUG 
+                # and we want to be sure the prediction is really about 30min before and not much less
+                if ((time_difference.total_seconds() < 30 * 60) & (time_difference.total_seconds() > 25 * 60) ): # DEBUG 
                     df.loc[index , 'forcasted_arrival_time30M'] = then
                  
 
@@ -104,4 +105,18 @@ def real_arrival_times(delta_t):  # delta_t : temps en seconde pendant lequel on
 
 
 
-real_arrival_times(7200)
+real_arrival_times(3600)
+
+
+# suivre les trains plutôt ; moins précis : passé/pas passé plutôt que temps à l'arrêt ; Quel retard est significatif pour quelqu'un ?
+
+# retard à l'arrivée, retard pendant le trajet ; Que présentent les bases de données de retard ; 
+
+# capacité à absorber des flux exceptionels ; stade de france ; 
+
+# essayer de détecter les travaux dans les données historiques ; 
+
+# ségrégation des flux : unsupervised ? puis coupler avec des données de flux : où habite ? où travail ; là où ils arrivent 
+# tourniquet: on compte à la sortie ; 
+
+# sheet pour savoir ce qu'il y a dans les datasets ; 
